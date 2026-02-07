@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	backoffBaseMs = 1000
+	backoffMaxMs  = 10000
+)
+
 type httpClient struct {
 	apiKey     string
 	baseURL    string
@@ -46,7 +51,7 @@ func (h *httpClient) del(ctx context.Context, path string) (map[string]any, erro
 func (h *httpClient) request(ctx context.Context, method, path string, body any, query url.Values) (map[string]any, error) {
 	u, err := url.Parse(h.baseURL + path)
 	if err != nil {
-		return nil, &NetworkError{ProofHoldingsError{Message: err.Error(), Code: "network_error"}}
+		return nil, &NetworkError{ProofError{Message: err.Error(), Code: "network_error"}}
 	}
 	if query != nil {
 		u.RawQuery = query.Encode()
@@ -66,7 +71,7 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 
 		req, err := http.NewRequestWithContext(ctx, method, u.String(), bodyReader)
 		if err != nil {
-			return nil, &NetworkError{ProofHoldingsError{Message: err.Error(), Code: "network_error"}}
+			return nil, &NetworkError{ProofError{Message: err.Error(), Code: "network_error"}}
 		}
 
 		req.Header.Set("Authorization", "Bearer "+h.apiKey)
@@ -77,7 +82,7 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 		if err != nil {
 			lastErr = err
 			if ctx.Err() != nil {
-				return nil, &TimeoutError{ProofHoldingsError{
+				return nil, &TimeoutError{ProofError{
 					Message: fmt.Sprintf("Request to %s %s timed out", method, path),
 					Code:    "timeout",
 				}}
@@ -93,7 +98,7 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 		respBody, _ := io.ReadAll(resp.Body)
 
 		// Rate limiting — retry with backoff
-		if resp.StatusCode == 429 && attempt < h.maxRetries {
+		if resp.StatusCode == http.StatusTooManyRequests && attempt < h.maxRetries {
 			if ra := resp.Header.Get("Retry-After"); ra != "" {
 				if sec, err := strconv.ParseFloat(ra, 64); err == nil {
 					time.Sleep(time.Duration(sec * float64(time.Second)))
@@ -105,7 +110,7 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 		}
 
 		// Server errors — retry with backoff
-		if resp.StatusCode >= 500 && attempt < h.maxRetries {
+		if resp.StatusCode >= http.StatusInternalServerError && attempt < h.maxRetries {
 			time.Sleep(h.backoff(attempt))
 			continue
 		}
@@ -121,19 +126,12 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 		}
 
 		// Error responses
-		if resp.StatusCode >= 400 {
+		if resp.StatusCode >= http.StatusBadRequest {
 			var apiErr *apiErrorBody
-			if errMap, ok := result["error"].(map[string]any); ok {
-				apiErr = &apiErrorBody{}
-				if v, ok := errMap["code"].(string); ok {
-					apiErr.Code = v
-				}
-				if v, ok := errMap["message"].(string); ok {
-					apiErr.Message = v
-				}
-				apiErr.Details = errMap["details"]
-				if v, ok := errMap["request_id"].(string); ok {
-					apiErr.RequestID = v
+			if errData, ok := result["error"]; ok && errData != nil {
+				if errBytes, err := json.Marshal(errData); err == nil {
+					apiErr = &apiErrorBody{}
+					_ = json.Unmarshal(errBytes, apiErr)
 				}
 			}
 			return nil, errorFromResponse(resp.StatusCode, apiErr)
@@ -143,12 +141,12 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 	}
 
 	if lastErr != nil {
-		return nil, &NetworkError{ProofHoldingsError{Message: lastErr.Error(), Code: "network_error"}}
+		return nil, &NetworkError{ProofError{Message: lastErr.Error(), Code: "network_error"}}
 	}
-	return nil, &NetworkError{ProofHoldingsError{Message: "Network request failed", Code: "network_error"}}
+	return nil, &NetworkError{ProofError{Message: "Network request failed", Code: "network_error"}}
 }
 
 func (h *httpClient) backoff(attempt int) time.Duration {
-	ms := math.Min(1000*math.Pow(2, float64(attempt)), 10000)
+	ms := math.Min(backoffBaseMs*math.Pow(2, float64(attempt)), backoffMaxMs)
 	return time.Duration(ms) * time.Millisecond
 }

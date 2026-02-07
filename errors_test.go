@@ -72,9 +72,9 @@ func TestErrorFromResponse_WithBody(t *testing.T) {
 
 func TestErrorFromResponse_Defaults(t *testing.T) {
 	err := errorFromResponse(418, nil)
-	var phErr *ProofHoldingsError
+	var phErr *ProofError
 	if !errors.As(err, &phErr) {
-		t.Fatal("expected ProofHoldingsError")
+		t.Fatal("expected ProofError")
 	}
 	if phErr.Code != "http_418" {
 		t.Errorf("want code 'http_418', got %q", phErr.Code)
@@ -82,7 +82,7 @@ func TestErrorFromResponse_Defaults(t *testing.T) {
 }
 
 func TestError_ImplementsError(t *testing.T) {
-	err := &ProofHoldingsError{Message: "test", Code: "test", StatusCode: 400}
+	err := &ProofError{Message: "test", Code: "test", StatusCode: 400}
 	var _ error = err // compile-time check
 	if err.Error() == "" {
 		t.Error("Error() should not be empty")

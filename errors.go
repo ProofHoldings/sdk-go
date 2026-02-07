@@ -1,32 +1,35 @@
 package proof
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
-// ProofHoldingsError is the base error type for all API errors.
-type ProofHoldingsError struct {
-	Message    string `json:"message"`
-	Code       string `json:"code"`
-	StatusCode int    `json:"status_code"`
-	Details    any    `json:"details,omitempty"`
-	RequestID  string `json:"request_id,omitempty"`
+// ProofError is the base error type for all API errors.
+type ProofError struct {
+	Message    string `json:"message"`              // Human-readable error message
+	Code       string `json:"code"`                 // Machine-readable error code
+	StatusCode int    `json:"status_code"`          // HTTP status code
+	Details    any    `json:"details,omitempty"`     // Additional error context
+	RequestID  string `json:"request_id,omitempty"` // Server request ID for debugging
 }
 
-func (e *ProofHoldingsError) Error() string {
+func (e *ProofError) Error() string {
 	return fmt.Sprintf("%s (code: %s, status: %d)", e.Message, e.Code, e.StatusCode)
 }
 
 // Typed error subtypes for specific HTTP status codes.
 
-type ValidationError struct{ ProofHoldingsError }
-type AuthenticationError struct{ ProofHoldingsError }
-type ForbiddenError struct{ ProofHoldingsError }
-type NotFoundError struct{ ProofHoldingsError }
-type ConflictError struct{ ProofHoldingsError }
-type RateLimitError struct{ ProofHoldingsError }
-type ServerError struct{ ProofHoldingsError }
-type NetworkError struct{ ProofHoldingsError }
-type TimeoutError struct{ ProofHoldingsError }
-type PollingTimeoutError struct{ ProofHoldingsError }
+type ValidationError struct{ ProofError }
+type AuthenticationError struct{ ProofError }
+type ForbiddenError struct{ ProofError }
+type NotFoundError struct{ ProofError }
+type ConflictError struct{ ProofError }
+type RateLimitError struct{ ProofError }
+type ServerError struct{ ProofError }
+type NetworkError struct{ ProofError }
+type TimeoutError struct{ ProofError }
+type PollingTimeoutError struct{ ProofError }
 
 func errorFromResponse(statusCode int, apiErr *apiErrorBody) error {
 	code := fmt.Sprintf("http_%d", statusCode)
@@ -45,7 +48,7 @@ func errorFromResponse(statusCode int, apiErr *apiErrorBody) error {
 		requestID = apiErr.RequestID
 	}
 
-	base := ProofHoldingsError{
+	base := ProofError{
 		Message:    message,
 		Code:       code,
 		StatusCode: statusCode,
@@ -54,20 +57,20 @@ func errorFromResponse(statusCode int, apiErr *apiErrorBody) error {
 	}
 
 	switch statusCode {
-	case 400:
+	case http.StatusBadRequest:
 		return &ValidationError{base}
-	case 401:
+	case http.StatusUnauthorized:
 		return &AuthenticationError{base}
-	case 403:
+	case http.StatusForbidden:
 		return &ForbiddenError{base}
-	case 404:
+	case http.StatusNotFound:
 		return &NotFoundError{base}
-	case 409:
+	case http.StatusConflict:
 		return &ConflictError{base}
-	case 429:
+	case http.StatusTooManyRequests:
 		return &RateLimitError{base}
 	default:
-		if statusCode >= 500 {
+		if statusCode >= http.StatusInternalServerError {
 			return &ServerError{base}
 		}
 		return &base
