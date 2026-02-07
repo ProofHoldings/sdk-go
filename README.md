@@ -135,7 +135,7 @@ v, err := client.Verifications.Retrieve(ctx, "nonexistent")
 if err != nil {
 	var notFound *proof.NotFoundError
 	var rateLimit *proof.RateLimitError
-	var apiErr *proof.ProofHoldingsError
+	var apiErr *proof.ProofError
 
 	switch {
 	case errors.As(err, &notFound):

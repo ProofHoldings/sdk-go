@@ -31,7 +31,7 @@ func resolveWaitOptions(opts *WaitOptions) (interval, timeout time.Duration) {
 	return
 }
 
-// ClientOption configures the ProofHoldings client.
+// ClientOption configures the Proof client.
 type ClientOption func(*clientConfig)
 
 type clientConfig struct {
@@ -67,7 +67,7 @@ type Client struct {
 // NewClient creates a new proof.holdings API client.
 func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	if apiKey == "" {
-		return nil, errors.New("api_key is required")
+		return nil, errors.New("api_key is required: proof.NewClient(\"pk_live_...\")")
 	}
 
 	cfg := &clientConfig{

@@ -31,7 +31,7 @@ func pollUntilComplete(
 		}
 
 		if time.Since(start) >= timeout {
-			return nil, &PollingTimeoutError{ProofHoldingsError{
+			return nil, &PollingTimeoutError{ProofError{
 				Message: fmt.Sprintf("%s did not complete within %s (last status: %s)", label, timeout, status),
 				Code:    "polling_timeout",
 			}}
