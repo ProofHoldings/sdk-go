@@ -10,6 +10,11 @@ type WebhookDeliveries struct {
 	http *httpClient
 }
 
+// Stats gets webhook delivery statistics (totals, rates, recent failures).
+func (w *WebhookDeliveries) Stats(ctx context.Context) (map[string]any, error) {
+	return w.http.get(ctx, "/api/v1/webhook-deliveries/stats", nil)
+}
+
 // List lists webhook deliveries with optional filters.
 func (w *WebhookDeliveries) List(ctx context.Context, params map[string]string) (map[string]any, error) {
 	q := url.Values{}

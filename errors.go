@@ -25,7 +25,14 @@ type AuthenticationError struct{ ProofError }
 type ForbiddenError struct{ ProofError }
 type NotFoundError struct{ ProofError }
 type ConflictError struct{ ProofError }
-type RateLimitError struct{ ProofError }
+// RateLimitError includes optional lockout fields for auth rate limiting.
+type RateLimitError struct {
+	ProofError
+	// RetryAfter is the number of seconds to wait before retrying (from error response retryAfter field).
+	RetryAfter *int
+	// RemainingAttempts is the number of remaining attempts before lockout (auth endpoints only).
+	RemainingAttempts *int
+}
 type ServerError struct{ ProofError }
 type NetworkError struct{ ProofError }
 type TimeoutError struct{ ProofError }
@@ -68,7 +75,12 @@ func errorFromResponse(statusCode int, apiErr *apiErrorBody) error {
 	case http.StatusConflict:
 		return &ConflictError{base}
 	case http.StatusTooManyRequests:
-		return &RateLimitError{base}
+		rl := &RateLimitError{ProofError: base}
+		if apiErr != nil {
+			rl.RetryAfter = apiErr.RetryAfter
+			rl.RemainingAttempts = apiErr.RemainingAttempts
+		}
+		return rl
 	default:
 		if statusCode >= http.StatusInternalServerError {
 			return &ServerError{base}
@@ -78,8 +90,10 @@ func errorFromResponse(statusCode int, apiErr *apiErrorBody) error {
 }
 
 type apiErrorBody struct {
-	Code      string `json:"code"`
-	Message   string `json:"message"`
-	Details   any    `json:"details,omitempty"`
-	RequestID string `json:"request_id,omitempty"`
+	Code              string `json:"code"`
+	Message           string `json:"message"`
+	Details           any    `json:"details,omitempty"`
+	RequestID         string `json:"request_id,omitempty"`
+	RetryAfter        *int   `json:"retryAfter,omitempty"`
+	RemainingAttempts *int   `json:"remaining_attempts,omitempty"`
 }

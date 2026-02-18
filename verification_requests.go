@@ -31,6 +31,11 @@ func (vr *VerificationRequests) List(ctx context.Context, params map[string]stri
 	return vr.http.get(ctx, "/api/v1/verification-requests", q)
 }
 
+// GetByReference gets a verification request by its reference ID.
+func (vr *VerificationRequests) GetByReference(ctx context.Context, referenceID string) (map[string]any, error) {
+	return vr.http.get(ctx, "/api/v1/verification-requests/by-reference/"+url.PathEscape(referenceID), nil)
+}
+
 // Cancel cancels a pending verification request.
 func (vr *VerificationRequests) Cancel(ctx context.Context, id string) (map[string]any, error) {
 	return vr.http.del(ctx, "/api/v1/verification-requests/"+url.PathEscape(id))

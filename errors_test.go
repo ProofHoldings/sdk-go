@@ -81,6 +81,31 @@ func TestErrorFromResponse_Defaults(t *testing.T) {
 	}
 }
 
+func TestErrorFromResponse_RateLimitWithLockoutFields(t *testing.T) {
+	retryAfter := 3600
+	remaining := 0
+	err := errorFromResponse(429, &apiErrorBody{
+		Code:              "auth_lockout",
+		Message:           "Too many attempts",
+		RetryAfter:        &retryAfter,
+		RemainingAttempts: &remaining,
+	})
+
+	var rlErr *RateLimitError
+	if !errors.As(err, &rlErr) {
+		t.Fatal("expected RateLimitError")
+	}
+	if rlErr.Code != "auth_lockout" {
+		t.Errorf("want code 'auth_lockout', got %q", rlErr.Code)
+	}
+	if rlErr.RetryAfter == nil || *rlErr.RetryAfter != 3600 {
+		t.Errorf("want RetryAfter 3600, got %v", rlErr.RetryAfter)
+	}
+	if rlErr.RemainingAttempts == nil || *rlErr.RemainingAttempts != 0 {
+		t.Errorf("want RemainingAttempts 0, got %v", rlErr.RemainingAttempts)
+	}
+}
+
 func TestError_ImplementsError(t *testing.T) {
 	err := &ProofError{Message: "test", Code: "test", StatusCode: 400}
 	var _ error = err // compile-time check
