@@ -44,6 +44,14 @@ func (h *httpClient) post(ctx context.Context, path string, body any) (map[strin
 	return h.request(ctx, http.MethodPost, path, body, nil)
 }
 
+func (h *httpClient) put(ctx context.Context, path string, body any) (map[string]any, error) {
+	return h.request(ctx, http.MethodPut, path, body, nil)
+}
+
+func (h *httpClient) patch(ctx context.Context, path string, body any) (map[string]any, error) {
+	return h.request(ctx, http.MethodPatch, path, body, nil)
+}
+
 func (h *httpClient) del(ctx context.Context, path string) (map[string]any, error) {
 	return h.request(ctx, http.MethodDelete, path, nil, nil)
 }
@@ -94,8 +102,8 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 			break
 		}
 
-		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
 
 		// Rate limiting — retry with backoff
 		if resp.StatusCode == http.StatusTooManyRequests && attempt < h.maxRetries {
@@ -149,4 +157,60 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 func (h *httpClient) backoff(attempt int) time.Duration {
 	ms := math.Min(backoffBaseMs*math.Pow(2, float64(attempt)), backoffMaxMs)
 	return time.Duration(ms) * time.Millisecond
+}
+
+// ---------------------------------------------------------------------------
+// Generic typed helpers – unmarshal API responses into Go structs.
+// The untyped methods (get, post, put, patch, del) remain unchanged for
+// backward compatibility; these sit alongside them.
+// ---------------------------------------------------------------------------
+
+// requestAs performs an HTTP request and unmarshals the JSON response into T.
+func requestAs[T any](h *httpClient, ctx context.Context, method, path string, body any, query url.Values) (T, error) {
+	result, err := h.request(ctx, method, path, body, query)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	data, err := json.Marshal(result)
+	if err != nil {
+		var zero T
+		return zero, fmt.Errorf("failed to re-marshal response: %w", err)
+	}
+	var typed T
+	if err := json.Unmarshal(data, &typed); err != nil {
+		var zero T
+		return zero, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+	return typed, nil
+}
+
+// getAs is a typed GET helper.
+func getAs[T any](h *httpClient, ctx context.Context, path string, query url.Values) (T, error) {
+	return requestAs[T](h, ctx, http.MethodGet, path, nil, query)
+}
+
+// postAs is a typed POST helper.
+func postAs[T any](h *httpClient, ctx context.Context, path string, body any) (T, error) {
+	return requestAs[T](h, ctx, http.MethodPost, path, body, nil)
+}
+
+// putAs is a typed PUT helper.
+func putAs[T any](h *httpClient, ctx context.Context, path string, body any) (T, error) {
+	return requestAs[T](h, ctx, http.MethodPut, path, body, nil)
+}
+
+// patchAs is a typed PATCH helper.
+func patchAs[T any](h *httpClient, ctx context.Context, path string, body any) (T, error) {
+	return requestAs[T](h, ctx, http.MethodPatch, path, body, nil)
+}
+
+// delAs is a typed DELETE helper.
+func delAs[T any](h *httpClient, ctx context.Context, path string) (T, error) {
+	return requestAs[T](h, ctx, http.MethodDelete, path, nil, nil)
+}
+
+// delWithBodyAs is a typed DELETE helper that sends a request body.
+func delWithBodyAs[T any](h *httpClient, ctx context.Context, path string, body any) (T, error) {
+	return requestAs[T](h, ctx, http.MethodDelete, path, body, nil)
 }

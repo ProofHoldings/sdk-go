@@ -62,6 +62,23 @@ type Client struct {
 	Proofs               *Proofs
 	Sessions             *Sessions
 	WebhookDeliveries    *WebhookDeliveries
+	Templates            *Templates
+	Profiles             *Profiles
+	Projects             *Projects
+	Billing              *Billing
+	Phones               *Phones
+	Emails               *Emails
+	Assets               *Assets
+	Auth                 *Auth
+	Settings             *Settings
+	APIKeys              *APIKeys
+	Account              *Account
+	TwoFA                *TwoFA
+	DNSCredentials       *DNSCredentials
+	Domains              *Domains
+	UserRequests         *UserRequests
+	UserDomainVerify     *UserDomainVerify
+	PublicProfiles       *PublicProfiles
 }
 
 // NewClient creates a new proof.holdings API client.
@@ -84,8 +101,25 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	return &Client{
 		Verifications:        &Verifications{http: http},
 		VerificationRequests: &VerificationRequests{http: http},
-		Proofs:               &Proofs{http: http, jwksURL: cfg.baseURL + "/.well-known/jwks.json"},
+		Proofs:               &Proofs{http: http, jwksCache: newJWKSCache(cfg.baseURL + "/.well-known/jwks.json")},
 		Sessions:             &Sessions{http: http},
 		WebhookDeliveries:    &WebhookDeliveries{http: http},
+		Templates:            &Templates{http: http},
+		Profiles:             &Profiles{http: http},
+		Projects:             &Projects{http: http},
+		Billing:              &Billing{http: http},
+		Phones:               &Phones{http: http},
+		Emails:               &Emails{http: http},
+		Assets:               &Assets{http: http},
+		Auth:                 &Auth{http: http},
+		Settings:             &Settings{http: http},
+		APIKeys:              &APIKeys{http: http},
+		Account:              &Account{http: http},
+		TwoFA:                &TwoFA{http: http},
+		DNSCredentials:       &DNSCredentials{http: http},
+		Domains:              &Domains{http: http},
+		UserRequests:         &UserRequests{http: http},
+		UserDomainVerify:     &UserDomainVerify{http: http},
+		PublicProfiles:       &PublicProfiles{http: http},
 	}, nil
 }

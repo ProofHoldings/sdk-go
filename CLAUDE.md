@@ -61,7 +61,6 @@ Type definitions in `types.go` (1,172 lines) are auto-generated from the OpenAPI
 - `http_test.go` - HTTP layer tests (retries, backoff, errors)
 - `errors_test.go` - Error type tests
 - `polling_test.go` - Polling helper tests
-- `resources_test.go` - Resource method tests covering all 22 resource types (136 tests): request building, URL construction, query parameters, typed response unmarshalling
 - `integration_test.go` - Integration tests against live API
 
 ## Key Patterns
