@@ -746,6 +746,7 @@ type CreateConfirmationBody struct {
 // Hitl HITL configuration with messaging channels and timeout
 type Hitl struct {
 	ID ObjectId `json:"id"`
+	UserID any `json:"user_id"`
 	Name *string `json:"name,omitempty"`
 	ProfileID any `json:"profile_id,omitempty"`
 	Channels []HitlChannel `json:"channels"`
