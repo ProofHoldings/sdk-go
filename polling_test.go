@@ -25,8 +25,8 @@ func TestPolling_ImmediateTerminal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result["status"] != "verified" {
-		t.Errorf("want status 'verified', got %v", result["status"])
+	if result.Status != "verified" {
+		t.Errorf("want status 'verified', got %v", result.Status)
 	}
 }
 
@@ -50,8 +50,8 @@ func TestPolling_PollsUntilTerminal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result["status"] != "verified" {
-		t.Errorf("want 'verified', got %v", result["status"])
+	if result.Status != "verified" {
+		t.Errorf("want 'verified', got %v", result.Status)
 	}
 	if callCount.Load() < 3 {
 		t.Errorf("expected at least 3 calls, got %d", callCount.Load())

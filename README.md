@@ -101,7 +101,7 @@ result, _ := client.VerificationRequests.WaitForCompletion(ctx, req["id"].(strin
 
 ```go
 // Validate online
-result, _ := client.Proofs.Validate(ctx, "eyJhbGciOi...", "")
+result, _ := client.Proofs.Validate(ctx, "eyJhbGciOi...")
 
 // Revoke
 resp, _ := client.Proofs.Revoke(ctx, "ver_abc123", "User requested")
