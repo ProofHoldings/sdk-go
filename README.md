@@ -103,12 +103,74 @@ result, _ := client.VerificationRequests.WaitForCompletion(ctx, req["id"].(strin
 // Validate online
 result, _ := client.Proofs.Validate(ctx, "eyJhbGciOi...", "")
 
+// Validate online AND bind the proof to the identifier you expect it to be about.
+// A proof about anything else comes back valid:false with reason "identifier_mismatch".
+bound, _ := client.Proofs.Validate(ctx, "eyJhbGciOi...", "+19295909022")
+
+// Verify offline — no API call with your key. Two public documents are read: the JWKS for the
+// signature, and the issuer's status list for revocation, which is checked by default.
+offline, err := client.Proofs.VerifyOffline(ctx, "eyJhbGciOi...")
+if err != nil {
+    // errors.Is(err, proof.ErrJWKSUnavailable): the key set could not be used to check the token —
+    // "I could not check", not "the proof is bad". There is no result to read on this path:
+    // offline is nil.
+    return err
+}
+if offline.Valid {
+    fmt.Println(offline.Payload.Sub, offline.Payload.Type, offline.Payload.IdentifierHash)
+} else {
+    // Reason: "revoked", "suspended", "expired", "invalid", "status_unavailable", or one of the
+    // key-rotation reasons below.
+    fmt.Println("rejected:", offline.Reason, offline.Error)
+}
+
+// "status_unavailable" means the revocation status could NOT be read — an unreachable list, one
+// that failed its own checks, or a slot the list does not cover. It is a refusal to guess, not a
+// claim that the proof is withdrawn. A token minted without a status-list slot stays valid and
+// reports RevocationChecked=false, exactly as the issuer's own Validate answers for it.
+
+// Signature only, for an air-gapped check against a warm key cache:
+signatureOnly, _ := client.Proofs.VerifyOffline(ctx, "eyJhbGciOi...", proof.WithoutRevocationCheck())
+fmt.Println(signatureOnly.RevocationChecked) // false — never assume it was checked
+
 // Revoke
 resp, _ := client.Proofs.Revoke(ctx, "ver_abc123", "User requested")
 
 // Get revocation list
 revoked, _ := client.Proofs.ListRevoked(ctx)
 ```
+
+### Signing-key rotation
+
+`VerifyOffline` fetches and caches the issuer's key set (JWKS) itself and follows its rotation
+rules. The cached set is reused for 10 minutes; a `kid` it does not know triggers one refetch, at
+most once every 30 seconds — inside that window another unknown `kid` returns an error wrapping
+`ErrJWKSUnavailable` (it may have been published since), and a `kid` still absent after the
+refetch answers `unknown_key`.
+
+- **`key_revoked`** — the issuer revoked the key that signed the token. The result carries
+  `PullHint{IssuerOrigin, Handle}`: where to fetch the re-signed token (`Handle` is the proof's
+  `proof_id`, or a delegation's `sub`). The handle is read from the token itself, whose signature a
+  revoked key no longer vouches for: escape it before building a request from it. A revocation
+  takes effect only after two key-set fetches at least 5 minutes apart both carry it, and is then
+  kept for a year.
+- **`jwks_stale`** — the key set could not be refreshed and the cached copy is older than the max
+  JWKS age (default 24 hours, at most 25 days; `proof.WithMaxJWKSAge(...)`, which `NewClient`
+  validates). The result carries `CacheAgeSeconds`. Call `RefreshJWKS()` once the issuer is
+  reachable.
+- **`wrong_key_purpose`**, **`outside_key_window`**, **`token_lifetime_exceeded`** — the key belongs
+  to another token family, the token was signed outside the key's validity window, or it lives
+  longer than the key allows. **`unknown_key`** — no published key matches the token's `kid`.
+
+A key set that cannot be used at all — never fetched and unreachable, or a failed refetch with no
+confirmed key left to answer — returns an error wrapping `ErrJWKSUnavailable`, never a verdict. The
+cause stays wrapped underneath it: `errors.Is(err, context.Canceled)` still tells your own
+cancellation apart from an unreachable issuer. `context.DeadlineExceeded` does not: the key-set read
+has a 5-second timeout of its own, so compare with your `ctx.Err()` to know whose deadline passed.
+Revoked-key tombstones are kept in memory only — they are not persisted, so a restarted process
+learns them again from the issuer. `ClearTombstones()` forgets them on purpose. `RefreshJWKS()`
+makes the next verification refetch the key set (and drops the cached status list); it does not
+forget tombstones.
 
 ### Sessions (Phone-First Flow)
 
@@ -157,6 +219,7 @@ client, _ := proof.NewClient("pk_live_...",
 	proof.WithBaseURL("https://api.proof.holdings"),
 	proof.WithTimeout(30 * time.Second),
 	proof.WithMaxRetries(2),
+	proof.WithMaxJWKSAge(24 * time.Hour), // offline verification: stale key-set bound
 )
 ```
 

@@ -20,6 +20,16 @@ func (v *Verifications) Retrieve(ctx context.Context, id string) (map[string]any
 	return v.http.get(ctx, "/api/v1/verifications/"+url.PathEscape(id), nil)
 }
 
+// CreateMultiChannel creates a multi-channel verification group (one phone offered across several channels; first completed channel wins).
+func (v *Verifications) CreateMultiChannel(ctx context.Context, params map[string]any) (map[string]any, error) {
+	return v.http.post(ctx, "/api/v1/verifications/multi-channel", params)
+}
+
+// GetMultiChannelStatus gets a multi-channel verification group status (poll until verified/expired; proof is present when verified).
+func (v *Verifications) GetMultiChannelStatus(ctx context.Context, groupID string) (map[string]any, error) {
+	return v.http.get(ctx, "/api/v1/verifications/multi-channel/"+url.PathEscape(groupID)+"/status", nil)
+}
+
 // List lists verifications with optional filters.
 func (v *Verifications) List(ctx context.Context, params map[string]string) (map[string]any, error) {
 	q := url.Values{}

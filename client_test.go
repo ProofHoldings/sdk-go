@@ -45,22 +45,48 @@ func TestNewClient_WithOptions(t *testing.T) {
 }
 
 func TestResolveWaitOptions_Defaults(t *testing.T) {
-	interval, timeout := resolveWaitOptions(nil)
-	if interval != 3e9 { // 3 seconds in nanoseconds
-		t.Errorf("expected 3s interval, got %v", interval)
+	r, err := resolveWaitOptions(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if timeout != 600e9 { // 10 minutes in nanoseconds
-		t.Errorf("expected 10m timeout, got %v", timeout)
+	if r.interval != 2e9 { // 2 seconds in nanoseconds
+		t.Errorf("expected 2s interval, got %v", r.interval)
+	}
+	if r.timeout != 600e9 { // 10 minutes in nanoseconds
+		t.Errorf("expected 10m timeout, got %v", r.timeout)
 	}
 }
 
 func TestResolveWaitOptions_Custom(t *testing.T) {
 	opts := &WaitOptions{Interval: 1e9, Timeout: 30e9}
-	interval, timeout := resolveWaitOptions(opts)
-	if interval != 1e9 {
-		t.Errorf("expected 1s interval, got %v", interval)
+	r, err := resolveWaitOptions(opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if timeout != 30e9 {
-		t.Errorf("expected 30s timeout, got %v", timeout)
+	if r.interval != 1e9 {
+		t.Errorf("expected 1s interval, got %v", r.interval)
+	}
+	if r.timeout != 30e9 {
+		t.Errorf("expected 30s timeout, got %v", r.timeout)
+	}
+}
+
+func TestResolveWaitOptions_RejectsInvalid(t *testing.T) {
+	cases := []struct {
+		name string
+		opts *WaitOptions
+	}{
+		{"negative interval", &WaitOptions{Interval: -1}},
+		{"negative timeout", &WaitOptions{Timeout: -1}},
+		{"negative maxInterval", &WaitOptions{MaxInterval: -1}},
+		{"negative jitter", &WaitOptions{Jitter: -1}},
+		{"backoff < 1", &WaitOptions{Backoff: 0.5}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := resolveWaitOptions(tc.opts); err == nil {
+				t.Errorf("expected error for %s, got nil", tc.name)
+			}
+		})
 	}
 }

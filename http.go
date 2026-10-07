@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -46,6 +47,14 @@ func (h *httpClient) post(ctx context.Context, path string, body any) (map[strin
 
 func (h *httpClient) del(ctx context.Context, path string) (map[string]any, error) {
 	return h.request(ctx, http.MethodDelete, path, nil, nil)
+}
+
+func (h *httpClient) put(ctx context.Context, path string, body any) (map[string]any, error) {
+	return h.request(ctx, http.MethodPut, path, body, nil)
+}
+
+func (h *httpClient) requestWithBody(ctx context.Context, method, path string, body any) (map[string]any, error) {
+	return h.request(ctx, method, path, body, nil)
 }
 
 func (h *httpClient) request(ctx context.Context, method, path string, body any, query url.Values) (map[string]any, error) {
@@ -117,8 +126,11 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 
 		// Parse response
 		var result map[string]any
+		jsonOK := false
 		if len(respBody) > 0 {
-			if err := json.Unmarshal(respBody, &result); err != nil {
+			if err := json.Unmarshal(respBody, &result); err == nil {
+				jsonOK = true
+			} else {
 				result = make(map[string]any)
 			}
 		} else {
@@ -135,6 +147,15 @@ func (h *httpClient) request(ctx context.Context, method, path string, body any,
 				}
 			}
 			return nil, errorFromResponse(resp.StatusCode, apiErr)
+		}
+
+		// Non-JSON success (e.g. avatar images): return a {data, content_type}
+		// envelope instead of the failed-JSON empty map. Gated on the body NOT
+		// parsing as JSON — Go's net/http auto-labels unlabeled JSON bodies as
+		// text/plain (http.DetectContentType), so content type alone is not a
+		// reliable signal here — AND the server declaring a non-JSON content type.
+		if ct := resp.Header.Get("Content-Type"); !jsonOK && len(respBody) > 0 && ct != "" && !strings.Contains(ct, "application/json") {
+			return map[string]any{"data": respBody, "content_type": ct}, nil
 		}
 
 		return result, nil

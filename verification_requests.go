@@ -41,6 +41,11 @@ func (vr *VerificationRequests) Cancel(ctx context.Context, id string) (map[stri
 	return vr.http.del(ctx, "/api/v1/verification-requests/"+url.PathEscape(id))
 }
 
+// GetProofs gets proof tokens for verified assets of a verification request.
+func (vr *VerificationRequests) GetProofs(ctx context.Context, id string) (map[string]any, error) {
+	return vr.http.get(ctx, "/api/v1/verification-requests/"+url.PathEscape(id)+"/proofs", nil)
+}
+
 // WaitForCompletion polls until request reaches a terminal state.
 func (vr *VerificationRequests) WaitForCompletion(ctx context.Context, id string, opts *WaitOptions) (map[string]any, error) {
 	return pollUntilComplete(
