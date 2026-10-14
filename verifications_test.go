@@ -40,3 +40,15 @@ func TestVerifications_GetMultiChannelStatus(t *testing.T) {
 		t.Errorf("want GET /api/v1/verifications/multi-channel/vg_abc123/status, got %s %s", rec.method, rec.path)
 	}
 }
+
+func TestVerifications_DeleteDomainVerification(t *testing.T) {
+	c, rec := newRecordingClient(t)
+
+	_, err := c.Verifications.DeleteDomainVerification(context.Background(), "dom/1")
+	if err != nil {
+		t.Fatalf("DeleteDomainVerification: %v", err)
+	}
+	if rec.method != http.MethodDelete || rec.rawPath != "/api/v1/verifications/domain/dom%2F1" {
+		t.Errorf("want DELETE /api/v1/verifications/domain/dom%%2F1, got %s %s", rec.method, rec.rawPath)
+	}
+}

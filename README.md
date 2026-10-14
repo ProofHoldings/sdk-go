@@ -223,6 +223,27 @@ client, _ := proof.NewClient("pk_live_...",
 )
 ```
 
+## Credentials
+
+Sign in once with `npx @proof-holdings/mcp-server login` and construct the client with no key:
+
+```go
+client, err := proof.NewDefaultClient() // or proof.NewDefaultClient(proof.WithBaseURL("..."))
+```
+
+`NewDefaultClient` resolves the key in this order:
+
+1. `PROOF_API_KEY`, when set and non-empty.
+2. The entry for this client's base URL in `~/.proof-holdings/credentials`, the file the login
+   command writes. The file is keyed by base URL, so a key saved against staging is never sent
+   to production.
+3. Otherwise it returns an error naming the three roads: pass the key to `NewClient`, set
+   `PROOF_API_KEY`, or run `npx @proof-holdings/mcp-server login`.
+
+The base URL — for `NewClient` too — is `WithBaseURL`, else a non-empty `PROOF_BASE_URL`, else
+`https://api.proof.holdings`. `NewClient` uses the key it is given as is, and an empty one
+(`proof.NewClient("")`) is an error — it never reads the environment or the file.
+
 ## Context & Cancellation
 
 All methods accept a `context.Context` for cancellation and timeouts:
@@ -236,5 +257,5 @@ v, err := client.Verifications.Retrieve(ctx, "ver_abc123")
 
 ## Requirements
 
-- Go >= 1.21
-- No external dependencies (uses `net/http` from the standard library)
+- Go >= 1.25 (the `go` directive in `go.mod`)
+- One dependency, `golang.org/x/crypto`; HTTP uses `net/http` from the standard library

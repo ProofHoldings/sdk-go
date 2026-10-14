@@ -139,14 +139,39 @@ type Client struct {
 	Delegations          *Delegations
 }
 
-// NewClient creates a new proof.holdings API client.
+// NewClient creates a new proof.holdings API client with an explicit key, used as given. It never
+// reads PROOF_API_KEY or the credentials file — see NewDefaultClient for that.
 func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	if apiKey == "" {
 		return nil, errors.New("api_key is required: proof.NewClient(\"pk_live_...\")")
 	}
+	cfg, err := defaultClientConfig(opts)
+	if err != nil {
+		return nil, err
+	}
+	return newClientWithConfig(apiKey, cfg), nil
+}
 
+// NewDefaultClient resolves the key the way `npx @proof-holdings/mcp-server login` expects: a
+// non-empty PROOF_API_KEY, else the entry saved for this client's base URL in
+// ~/.proof-holdings/credentials. The base URL is WithBaseURL, else a non-empty PROOF_BASE_URL,
+// else DefaultBaseURL — the same rule NewClient applies.
+func NewDefaultClient(opts ...ClientOption) (*Client, error) {
+	cfg, err := defaultClientConfig(opts)
+	if err != nil {
+		return nil, err
+	}
+	resolved := ResolveAPIKey(cfg.baseURL)
+	if resolved.APIKey == "" {
+		return nil, missingKeyError(cfg.baseURL, resolved.Notice)
+	}
+	return newClientWithConfig(resolved.APIKey, cfg), nil
+}
+
+// defaultClientConfig applies the options over the defaults, then settles the base URL
+// (explicit option → non-empty PROOF_BASE_URL → DefaultBaseURL) and validates what needs it.
+func defaultClientConfig(opts []ClientOption) (*clientConfig, error) {
 	cfg := &clientConfig{
-		baseURL:    DefaultBaseURL,
 		timeout:    DefaultTimeout,
 		maxRetries: DefaultMaxRetries,
 		maxJWKSAge: DefaultMaxJWKSAge,
@@ -154,10 +179,14 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	cfg.baseURL = ResolveBaseURL(cfg.baseURL)
 	if err := validateMaxJWKSAge(cfg.maxJWKSAge); err != nil {
 		return nil, err
 	}
+	return cfg, nil
+}
 
+func newClientWithConfig(apiKey string, cfg *clientConfig) *Client {
 	http := newHTTPClient(apiKey, cfg.baseURL, cfg.timeout, cfg.maxRetries)
 
 	return &Client{
@@ -178,5 +207,5 @@ func NewClient(apiKey string, opts ...ClientOption) (*Client, error) {
 		ProofMe:              &ProofMe{http: http},
 		Circles:              &Circles{http: http},
 		Delegations:          &Delegations{http: http},
-	}, nil
+	}
 }

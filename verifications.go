@@ -87,6 +87,15 @@ func (v *Verifications) CheckDomainVerification(ctx context.Context, id string) 
 	return v.http.post(ctx, "/api/v1/verifications/domain/"+url.PathEscape(id)+"/check", nil)
 }
 
+// DeleteDomainVerification deletes a domain verification attempt that is not verified (pending,
+// verifying or failed) — nothing is revoked. A verified domain, or one that needs re-verification,
+// is refused with 409 domain_verified: removing it revokes its proofs and every delegation issued
+// from it, which belongs to the signed-in owner (the dashboard, or the MCP delete_domain tool in a
+// login session).
+func (v *Verifications) DeleteDomainVerification(ctx context.Context, id string) (map[string]any, error) {
+	return v.http.del(ctx, "/api/v1/verifications/domain/"+url.PathEscape(id))
+}
+
 // WaitForCompletion polls until verification reaches a terminal state.
 func (v *Verifications) WaitForCompletion(ctx context.Context, id string, opts *WaitOptions) (map[string]any, error) {
 	return pollUntilComplete(

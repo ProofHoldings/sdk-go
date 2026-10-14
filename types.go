@@ -67,6 +67,67 @@ type SuccessResponse struct {
 // Other
 // ============================================================================
 
+// AccountDeletionCancelTokenCheck The emailed cancel link still acts; nothing was changed by this read
+type AccountDeletionCancelTokenCheck struct {
+	Valid string `json:"valid"`
+	State string `json:"state"`
+	ScheduledFor *string `json:"scheduled_for"`
+	HoldReason *string `json:"hold_reason"`
+	DisplayName *string `json:"display_name"`
+}
+
+// AccountDeletionCancelledResponse The deletion is cancelled and the lock lifted
+type AccountDeletionCancelledResponse struct {
+	Success bool `json:"success"`
+	Ok string `json:"ok"`
+	WasState string `json:"was_state"`
+	ProofsUnsuspended int `json:"proofs_unsuspended"`
+	ProofsKeptSuspended int `json:"proofs_kept_suspended"`
+	NotRestored []string `json:"not_restored"`
+	Notice []map[string]any `json:"notice"`
+}
+
+// AccountDeletionScheduledResponse The account is locked and its deletion scheduled
+type AccountDeletionScheduledResponse struct {
+	Success bool `json:"success"`
+	State string `json:"state"`
+	ScheduledFor string `json:"scheduled_for"`
+	AlreadyScheduled bool `json:"already_scheduled"`
+	ProofsSuspended int `json:"proofs_suspended"`
+	Notice []map[string]any `json:"notice"`
+}
+
+// AccountDeletionStatus Where the account stands with its deletion — the lock page's read
+type AccountDeletionStatus struct {
+	State string `json:"state"`
+	ScheduledFor *string `json:"scheduled_for"`
+	RequestedAt *string `json:"requested_at"`
+	HoldReason *string `json:"hold_reason"`
+	FinalInvoice map[string]any `json:"final_invoice"`
+	CanCancel bool `json:"can_cancel"`
+	GraceDays int `json:"grace_days"`
+	Delayed bool `json:"delayed"`
+}
+
+// AccountExportJob One data export of the account — prepared in the background, downloadable only by the signed-in owner
+type AccountExportJob struct {
+	ID string `json:"id"`
+	Status string `json:"status"`
+	Error *string `json:"error"`
+	RequestedAt string `json:"requested_at"`
+	ReadyAt *string `json:"ready_at"`
+	ExpiresAt string `json:"expires_at"`
+	DownloadedAt *string `json:"downloaded_at"`
+	SizeBytes *int `json:"size_bytes"`
+	Counts map[string]any `json:"counts"`
+	DownloadPath *string `json:"download_path"`
+}
+
+// AccountExportLatest The account's most recent export, or null
+type AccountExportLatest struct {
+	Latest *AccountExportJob `json:"latest"`
+}
+
 type AccountSessionIdParam struct {
 	ID string `json:"id"`
 }
@@ -103,8 +164,65 @@ type ApprovalLinkResponse struct {
 	ApprovalURL string `json:"approval_url"`
 }
 
+// ArtifactClaimLocation One place the claim check read, and what it found there
+type ArtifactClaimLocation struct {
+	ID string `json:"id"`
+	Location string `json:"location"`
+	URL *string `json:"url"`
+	Result string `json:"result"`
+	Reason *string `json:"reason"`
+	Detail string `json:"detail"`
+	CheckedAt string `json:"checked_at"`
+}
+
+// ArtifactClaimProfileLink A public profile of the delegating account that shows the principal domain. Exactly one of the two fields is present
+type ArtifactClaimProfileLink struct {
+	Username *string `json:"username,omitempty"`
+	ProfileID *string `json:"profile_id,omitempty"`
+}
+
+// ArtifactClaimDelegation An in-force delegation whose token was found in at least one checked location
+type ArtifactClaimDelegation struct {
+	Principal string `json:"principal"`
+	ProofID string `json:"proof_id"`
+	Scope []string `json:"scope"`
+	IssuedAt string `json:"issued_at"`
+	ExpiresAt string `json:"expires_at"`
+	Token string `json:"token"`
+	FoundAt []string `json:"found_at"`
+	Profile *ArtifactClaimProfileLink `json:"profile"`
+}
+
+// ArtifactClaim Whether a domain has published a delegation for this exact artifact, and every place that was checked. A delegation attests who authorized the artifact — not that it is safe, audited or endorsed
+type ArtifactClaim struct {
+	Delegate string `json:"delegate"`
+	DelegateType string `json:"delegate_type"`
+	ArtifactPath *string `json:"artifact_path"`
+	Claim string `json:"claim"`
+	CheckedAt string `json:"checked_at"`
+	Locations []ArtifactClaimLocation `json:"locations"`
+	Delegations []ArtifactClaimDelegation `json:"delegations"`
+	Listing map[string]any `json:"listing"`
+}
+
+// ArtifactClaimedList Artifacts whose stored answer is `claimed` and which have a page, ordered by delegate
+type ArtifactClaimedList struct {
+	Data []map[string]any `json:"data"`
+	Pagination map[string]any `json:"pagination"`
+}
+
 // AssetChannel represents the possible values for asset channel.
 type AssetChannel = string
+
+type AssetRevocationItem struct {
+	AssetID string `json:"asset_id"`
+	Outcome string `json:"outcome"`
+	Type *string `json:"type,omitempty"`
+	Identifier *string `json:"identifier,omitempty"`
+	RevokedAssetIds []string `json:"revoked_asset_ids,omitempty"`
+	DelegationsRevoked []map[string]any `json:"delegations_revoked,omitempty"`
+	DomainStatus *string `json:"domain_status,omitempty"`
+}
 
 // AccountSessionResponse Account-session response. Same wire format whether the request created a new account or pivoted to login — the `type` field distinguishes the outcome.
 type AccountSessionResponse struct {
@@ -201,6 +319,38 @@ type HitlListQuery struct {
 	Status *HitlStatus `json:"status,omitempty"`
 	Environment *string `json:"environment,omitempty"`
 	ProfileID *string `json:"profile_id,omitempty"`
+}
+
+// IdentifierRemovalPreview What removing a phone or email would do; `allowed: false` carries the reason instead of the counts.
+type IdentifierRemovalPreview struct {
+	Allowed bool `json:"allowed"`
+	Blocked map[string]any `json:"blocked"`
+	Type *string `json:"type,omitempty"`
+	Identifier *string `json:"identifier,omitempty"`
+	IsPrimary *bool `json:"is_primary,omitempty"`
+	Proofs *int `json:"proofs,omitempty"`
+	Authorizations *int `json:"authorizations,omitempty"`
+	HitlConfigsWithoutApprover []map[string]any `json:"hitl_configs_without_approver,omitempty"`
+	Circles *int `json:"circles,omitempty"`
+	NewPrimary map[string]any `json:"new_primary,omitempty"`
+	LookalikeWatch *string `json:"lookalike_watch,omitempty"`
+	NoticeTo []string `json:"notice_to,omitempty"`
+}
+
+// IdentifierRemovedResponse The cascade a removal performed, line by line — the same lines the notice carries.
+type IdentifierRemovedResponse struct {
+	Success string `json:"success"`
+	Type string `json:"type"`
+	RemovedID string `json:"removed_id"`
+	Identifier string `json:"identifier"`
+	ProofsRevoked int `json:"proofs_revoked"`
+	AuthorizationsRevoked int `json:"authorizations_revoked"`
+	HitlConfigsWithoutApprover []map[string]any `json:"hitl_configs_without_approver"`
+	CirclesRepointed int `json:"circles_repointed"`
+	NewPrimary map[string]any `json:"new_primary"`
+	LookalikeWatch string `json:"lookalike_watch"`
+	SessionsInvalidated int `json:"sessions_invalidated"`
+	Notice []map[string]any `json:"notice"`
 }
 
 // IdentityChallengeCreate Create a cross-channel identity challenge (Proof of Me)
@@ -318,7 +468,7 @@ type OAuthProtectedResourceMetadata struct {
 	ResourceDocumentation string `json:"resource_documentation"`
 }
 
-// ApiKeyUsageResponse Per-API-key usage: verification counts by type/channel/status + per-collection totals (requests, confirmations, authorizations) + attribution metadata. Counts only — no recipient identifiers (SEC-001). Data is returned for revoked keys (audit).
+// ApiKeyUsageResponse Per-API-key usage: verification counts by type/channel/status + per-collection totals (requests, confirmations, authorizations) + attribution metadata. The counts cover the key and every key it replaced (`api_key.replaced_key_ids`). Counts only — no recipient identifiers (SEC-001). Data is returned for revoked keys (audit).
 type ApiKeyUsageResponse struct {
 	APIKey map[string]any `json:"api_key"`
 	Verifications map[string]any `json:"verifications"`
@@ -726,6 +876,20 @@ type UpdateHitlBody struct {
 	TimeoutSeconds *float64 `json:"timeout_seconds,omitempty"`
 }
 
+// UserAPIKeyListItem A live API key as the owner's key list shows it. Never carries the key value.
+type UserAPIKeyListItem struct {
+	ID ObjectId `json:"id"`
+	Name string `json:"name"`
+	Prefix string `json:"prefix"`
+	Environment string `json:"environment"`
+	Scopes []string `json:"scopes"`
+	ProfileID *ObjectId `json:"profile_id"`
+	LastUsedAt *string `json:"last_used_at,omitempty"`
+	ExpiresAt *string `json:"expires_at"`
+	CreatedAt string `json:"created_at"`
+	ReplacedKeyIds []ObjectId `json:"replaced_key_ids"`
+}
+
 // MultiChannelChannelBlock Per-channel setup block of a multi-channel verification group
 type MultiChannelChannelBlock struct {
 	Channel MultiChannelPhoneChannel `json:"channel"`
@@ -844,6 +1008,16 @@ type ConnectProviderRequest struct {
 	Credentials map[string]any `json:"credentials"`
 }
 
+type DomainRemovedResponse struct {
+	Success string `json:"success"`
+	Domain string `json:"domain"`
+	ProofsRevoked int `json:"proofs_revoked"`
+	DelegationsRevoked []map[string]any `json:"delegations_revoked"`
+	External map[string]any `json:"external"`
+	Carriers []map[string]any `json:"carriers"`
+	Notice []map[string]any `json:"notice"`
+}
+
 // DomainStatus represents the possible values for domain status.
 type DomainStatus = string
 
@@ -862,6 +1036,7 @@ type Domain struct {
 	ProofID *string `json:"proof_id,omitempty"`
 	ProofStatus *string `json:"proof_status,omitempty"`
 	ProofRevokedReason *string `json:"proof_revoked_reason,omitempty"`
+	ProofExpiresAt *string `json:"proof_expires_at,omitempty"`
 }
 
 // DomainCheckResponse Domain verification check result
@@ -1503,6 +1678,17 @@ type CreateProfileRequest struct {
 	Theme *ProfileTheme `json:"theme,omitempty"`
 }
 
+// PublicProfileDelegation A published, in-force delegation for a domain the profile shows
+type PublicProfileDelegation struct {
+	Delegate string `json:"delegate"`
+	DelegateType string `json:"delegate_type"`
+	Principal string `json:"principal"`
+	Scope []string `json:"scope"`
+	IssuedAt string `json:"issued_at"`
+	ExpiresAt string `json:"expires_at"`
+	ArtifactPath *string `json:"artifact_path"`
+}
+
 // UpdateProfileProofsRequest Request body for updating which proofs are displayed on a profile
 type UpdateProfileProofsRequest struct {
 	Proofs []ProfileProofEntry `json:"proofs"`
@@ -1519,6 +1705,7 @@ type UpdateProfileRequest struct {
 	IsPrimary *bool `json:"is_primary,omitempty"`
 	ShowVerificationDates *bool `json:"show_verification_dates,omitempty"`
 	ShowProofChannels *bool `json:"show_proof_channels,omitempty"`
+	ShowDelegations *bool `json:"show_delegations,omitempty"`
 	Theme *ProfileTheme `json:"theme,omitempty"`
 	CustomLinks []CustomLink `json:"custom_links,omitempty"`
 }
@@ -1541,6 +1728,8 @@ type PublicProfile struct {
 	Theme *ProfileTheme `json:"theme,omitempty"`
 	CustomLinks []CustomLink `json:"custom_links,omitempty"`
 	Proofs []map[string]any `json:"proofs,omitempty"`
+	ShowDelegations *bool `json:"show_delegations,omitempty"`
+	Delegations []PublicProfileDelegation `json:"delegations,omitempty"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
@@ -1580,20 +1769,6 @@ type Session struct {
 	Proof *Proof `json:"proof,omitempty"`
 	CreatedAt string `json:"created_at"`
 	ExpiresAt string `json:"expires_at"`
-}
-
-// ============================================================================
-// Account
-// ============================================================================
-
-// DeleteAccountRequest Request body for final account deletion
-type DeleteAccountRequest struct {
-	SessionID string `json:"session_id"`
-}
-
-// InitiateAccountDeletionRequest Request body for initiating account deletion
-type InitiateAccountDeletionRequest struct {
-	Channel *string `json:"channel,omitempty"`
 }
 
 // ============================================================================
@@ -1697,6 +1872,10 @@ type RevokeProofResponse struct {
 	VerificationID *string `json:"verification_id,omitempty"`
 	RevokedAt string `json:"revoked_at"`
 	Reason string `json:"reason"`
+	Principal *string `json:"principal,omitempty"`
+	OwnedDomain *bool `json:"owned_domain,omitempty"`
+	DomainStatus *string `json:"domain_status,omitempty"`
+	DelegationsRevoked []map[string]any `json:"delegations_revoked,omitempty"`
 }
 
 // RevokedProofType represents the possible values for revoked proof type.
@@ -1818,7 +1997,20 @@ type TemplateVariable struct {
 // API Keys
 // ============================================================================
 
-// APIKeyResponse API key (key value only shown on creation)
+// APIKeyCreatedResponse A newly created or regenerated API key, with its full value — the one response that carries it.
+type APIKeyCreatedResponse struct {
+	ID ObjectId `json:"id"`
+	Key string `json:"key"`
+	Name string `json:"name"`
+	Prefix string `json:"prefix"`
+	Environment string `json:"environment"`
+	Scopes []string `json:"scopes"`
+	ProfileID *ObjectId `json:"profile_id"`
+	CreatedAt string `json:"created_at"`
+	Warning string `json:"warning"`
+}
+
+// APIKeyResponse An API key's redacted metadata, as the calling key reads itself (`GET /me/api-key`). Never carries the key value.
 type APIKeyResponse struct {
 	ID ObjectId `json:"id"`
 	Name string `json:"name"`
@@ -1830,6 +2022,7 @@ type APIKeyResponse struct {
 	LastUsedAt *string `json:"last_used_at,omitempty"`
 	ExpiresAt *string `json:"expires_at,omitempty"`
 	RevokedAt *string `json:"revoked_at,omitempty"`
+	ReplacedKeyIds []ObjectId `json:"replaced_key_ids,omitempty"`
 }
 
 // CreateAPIKeyRequest Request body for creating an API key
@@ -1838,6 +2031,38 @@ type CreateAPIKeyRequest struct {
 	Environment *string `json:"environment,omitempty"`
 	Scopes []string `json:"scopes,omitempty"`
 	ProfileID any `json:"profile_id,omitempty"`
+}
+
+// ============================================================================
+// Projects
+// ============================================================================
+
+type ProjectDeletedResponse struct {
+	Success string `json:"success"`
+	Message string `json:"message"`
+	Project map[string]any `json:"project"`
+	WasPrimary bool `json:"was_primary"`
+	APIKeysRevoked int `json:"api_keys_revoked"`
+	HitlArchived int `json:"hitl_archived"`
+	HitlDetached int `json:"hitl_detached"`
+	ConfirmationsDenied int `json:"confirmations_denied"`
+	AuthorizationsRevoked int `json:"authorizations_revoked"`
+	RequestsCancelled int `json:"requests_cancelled"`
+	RequestsDetached int `json:"requests_detached"`
+	VerificationsDetached int `json:"verifications_detached"`
+	DomainsDetached int `json:"domains_detached"`
+	CirclesDetached int `json:"circles_detached"`
+	TemplatesDeleted int `json:"templates_deleted"`
+	UsernameRetired bool `json:"username_retired"`
+	NewPrimary map[string]any `json:"new_primary"`
+}
+
+type ProjectDeletionPreview struct {
+	Allowed bool `json:"allowed"`
+	Blocked map[string]any `json:"blocked"`
+	Project map[string]any `json:"project"`
+	Counts map[string]any `json:"counts"`
+	NewPrimary map[string]any `json:"new_primary"`
 }
 
 // ============================================================================
@@ -1995,6 +2220,7 @@ type Start2FARequest struct {
 	PhoneID *string `json:"phone_id,omitempty"`
 	TtlSeconds *int `json:"ttl_seconds,omitempty"`
 	SingleUse *bool `json:"single_use,omitempty"`
+	Targets []string `json:"targets,omitempty"`
 }
 
 // ============================================================================
@@ -2131,6 +2357,7 @@ const (
 )
 
 const (
+	BillingPlanFree BillingPlan = "free"
 	BillingPlanPro BillingPlan = "pro"
 	BillingPlanBusiness BillingPlan = "business"
 	BillingPlanEnterprise BillingPlan = "enterprise"
@@ -2303,6 +2530,8 @@ const (
 	WebhookEventTypeProofRevoked WebhookEventType = "proof.revoked"
 	WebhookEventTypeProofSuspended WebhookEventType = "proof.suspended"
 	WebhookEventTypeProofUnsuspended WebhookEventType = "proof.unsuspended"
+	WebhookEventTypeAccountDeletionScheduled WebhookEventType = "account.deletion_scheduled"
+	WebhookEventTypeAccountDeletionCancelled WebhookEventType = "account.deletion_cancelled"
 )
 
 const (
@@ -2323,4 +2552,7 @@ const (
 	TwoFAActionTypeTemplatesWrite TwoFAActionType = "templates_write"
 	TwoFAActionTypeWebhookWrite TwoFAActionType = "webhook_write"
 	TwoFAActionTypeDelegationLifecycle TwoFAActionType = "delegation_lifecycle"
+	TwoFAActionTypeDomainRemove TwoFAActionType = "domain_remove"
+	TwoFAActionTypeProfileDelete TwoFAActionType = "profile_delete"
+	TwoFAActionTypeAccountDeleteCancel TwoFAActionType = "account_delete_cancel"
 )

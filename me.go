@@ -48,7 +48,8 @@ func (m *Me) ApiKeySelf(ctx context.Context) (map[string]any, error) {
 }
 
 // ApiKeyUsage returns per-API-key usage counts (verifications, requests,
-// confirmations, authorizations) plus attribution context for the key id.
+// confirmations, authorizations) plus attribution context for the key id and
+// every key it replaced (api_key.replaced_key_ids).
 // Optional params: environment (production|test).
 //
 // GET /api/v1/me/api-keys/:id/usage
